@@ -1,6 +1,8 @@
-package com.ticketing.user_service.domain.user
+package com.ticketing.userservice.domain.user
 
-import com.ticketing.user_service.domain.user.dto.SignUpRequest
+import com.ticketing.userservice.domain.user.dto.SignUpRequest
+import com.ticketing.userservice.domain.user.dto.LoginRequest
+import com.ticketing.userservice.domain.user.dto.LoginResponse
 import io.swagger.v3.oas.annotations.Operation
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -36,5 +38,20 @@ class UserController (
         return ResponseEntity
             .status(HttpStatus.CREATED)
             .body("회원가입이 완료되었습니다.")
+    }
+
+    /**
+     * 사용자 로그인 API
+     *
+     * 1.클라이언트로부터 로그인 정보(LoginRequest)를 HTTP Body로 받습니다.
+     * 2.UserService의 login 메서드를 호출하여 JWT 토큰을 발급받습니다.
+     * 3.발급받은 토큰을 LoginResponse DTO에 담아 클라이언트에게 응답합니다.
+     */
+    @Operation(summary = "사용자 로그인")
+    @PostMapping("/login")
+    fun login(@RequestBody request: LoginRequest): ResponseEntity<LoginResponse> {
+        val token = userService.login(request)
+
+        return ResponseEntity.ok(LoginResponse(token))
     }
 }

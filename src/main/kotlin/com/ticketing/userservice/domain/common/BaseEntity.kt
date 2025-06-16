@@ -1,4 +1,4 @@
-package com.ticketing.user_service.domain.common
+package com.ticketing.userservice.domain.common
 
 import jakarta.persistence.Column
 import jakarta.persistence.EntityListeners

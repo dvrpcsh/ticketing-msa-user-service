@@ -1,4 +1,4 @@
-package com.ticketing.user_service
+package com.ticketing.userservice
 
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication

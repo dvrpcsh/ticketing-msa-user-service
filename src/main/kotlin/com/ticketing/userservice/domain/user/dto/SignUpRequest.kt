@@ -1,4 +1,4 @@
-package com.ticketing.user_service.domain.user.dto
+package com.ticketing.userservice.domain.user.dto
 
 import io.swagger.v3.oas.annotations.media.Schema
 

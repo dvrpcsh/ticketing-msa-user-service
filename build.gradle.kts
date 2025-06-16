@@ -38,6 +38,15 @@ dependencies {
 	// Swagger UI (API 문서)
 	implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.5.0")
 
+	// JWT 처리를 위한 라이브러리 (jjwt)
+	// JWT의 인터페이스와 기본 클래스를 제공합니다.
+	implementation("io.jsonwebtoken:jjwt-api:0.11.5")
+	// JWT의 실제 구현체를 제공합니다.
+	runtimeOnly("io.jsonwebtoken:jjwt-impl:0.11.5")
+	// JWT를 JSON으로 변환하거나 그 반대의 작업을 위해 Jackson 라이브러리와의 통합을 지원합니다.
+	runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.11.5")
+
+
 	// 테스트용 기본 의존성
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
 	testImplementation("org.springframework.security:spring-security-test")

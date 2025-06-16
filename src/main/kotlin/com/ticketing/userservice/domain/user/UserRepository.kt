@@ -1,6 +1,5 @@
-package com.ticketing.user_service.domain.user
+package com.ticketing.userservice.domain.user
 
-import com.ticketing.user_service.domain.user.User
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.stereotype.Repository
 

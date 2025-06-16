@@ -1,6 +1,6 @@
-package com.ticketing.user_service.domain.user
+package com.ticketing.userservice.domain.user
 
-import com.ticketing.user_service.domain.common.BaseEntity
+import com.ticketing.userservice.domain.common.BaseEntity
 import jakarta.persistence.*
 
 @Entity
