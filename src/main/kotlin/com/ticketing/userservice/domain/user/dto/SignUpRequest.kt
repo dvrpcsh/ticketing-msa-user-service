@@ -6,15 +6,15 @@ import io.swagger.v3.oas.annotations.media.Schema
 data class SignUpRequest(
 
     //회원가입 시 외부(클라이언트)로부터 받을 이메일
-    @Schema(description = "사용자 이메일 주소", example = "test@example.com")
+    @Schema(description = "사용자 이메일 주소", example = "test@naver.com")
     val email: String,
 
     //비밀번호
-    @Schema(description = "사용자 비밀번호", example = "password123!")
+    @Schema(description = "사용자 비밀번호", example = "password1234!")
     val password: String,
 
     //확인용 비밀번호
-    @Schema(description = "비밀번호 동일여부 확인", example = "password123!")
+    @Schema(description = "비밀번호 동일여부 확인", example = "password1234!")
     val passwordConfirm: String,
 
     //사용자명
