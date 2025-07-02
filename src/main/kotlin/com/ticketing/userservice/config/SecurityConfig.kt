@@ -5,12 +5,14 @@ import com.ticketing.userservice.security.jwt.JwtTokenProvider
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
+import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer
 import org.springframework.security.config.annotation.web.invoke
 import org.springframework.security.config.http.SessionCreationPolicy
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher
 
 /**
  * 역할: Spring Security 관련 설정을 정의하는 클래스입니다.
@@ -23,6 +25,22 @@ class SecurityConfig(
     @Bean
     fun passwordEncoder(): PasswordEncoder {
         return BCryptPasswordEncoder()
+    }
+
+    /**
+     * Swagger 관련 경로에 대해 Spring Security의 모든 보안 검사를 무시하도록 설정합니다.
+     * 이 설정은 SecurityFilterChain보다 먼저 동작하여, 리다이렉트를 포함한 모든 Swagger 관련 요청을 허용합니다.
+     */
+    @Bean
+    fun webSecurityCustomizer(): WebSecurityCustomizer {
+        return WebSecurityCustomizer { web ->
+            web.ignoring()
+                .requestMatchers(
+                    "/swagger-ui.html",
+                    "/swagger-ui/**",
+                    "/v3/api-docs/**"
+                )
+        }
     }
 
     /**
