@@ -2,10 +2,13 @@ package com.ticketing.userservice.domain.user
 
 import com.ticketing.userservice.domain.user.dto.LoginRequest
 import com.ticketing.userservice.domain.user.dto.SignUpRequest
+import com.ticketing.userservice.domain.user.dto.MyInfoResponse
 import com.ticketing.userservice.security.jwt.JwtTokenProvider
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import jakarta.persistence.EntityNotFoundException
+import org.springframework.security.core.context.SecurityContextHolder
 
 @Service
 class UserService (
@@ -61,5 +64,22 @@ class UserService (
 
         //3.JWT 토큰 생성
         return jwtTokenProvider.generateToken(user.email, user.role)
+    }
+
+    /**
+     * 현재 인증된 사용자의 정보를 조회합니다.
+     *
+     * 1.SecurityContextHolder에서 현재 사용자의 인증 정보(Authentication)를 가져옵니다.
+     * - 이 정보는 이전에 만든 JwtAuthenticationFilter가 토큰을 검증하고 넣어준 것 입니다.
+     * 2.인증 정보에서 사용자의 이메일(name)을 추출합니다.
+     * 3.이메일을 사용하여 DB에서 사용자 정보를 조회하고, MyInfoResponse DTO로 변환하여 반환합니다.
+     */
+    fun getMyInfo(): MyInfoResponse {
+        val email = SecurityContextHolder.getContext().authentication.name
+
+        val user = userRepository.findByEmail(email)
+            ?: throw EntityNotFoundException("사용자를 찾을 수 없습니다.")
+
+        return MyInfoResponse.from(user)
     }
 }

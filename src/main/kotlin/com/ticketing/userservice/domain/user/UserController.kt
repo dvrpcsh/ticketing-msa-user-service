@@ -3,6 +3,7 @@ package com.ticketing.userservice.domain.user
 import com.ticketing.userservice.domain.user.dto.SignUpRequest
 import com.ticketing.userservice.domain.user.dto.LoginRequest
 import com.ticketing.userservice.domain.user.dto.LoginResponse
+import com.ticketing.userservice.domain.user.dto.MyInfoResponse
 import io.swagger.v3.oas.annotations.Operation
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -14,7 +15,6 @@ import io.swagger.v3.oas.annotations.tags.Tag
 @RestController
 @RequestMapping("/api/users")
 class UserController (
-
     private val userService: UserService
 ) {
     /**
@@ -53,5 +53,20 @@ class UserController (
         val token = userService.login(request)
 
         return ResponseEntity.ok(LoginResponse(token))
+    }
+
+    /**
+     * 내 정보 조회 API
+     *
+     * 1.이 API는 인증이 필요하며, 요청 헤더에 유효한 JWT토큰이 포함되어야 합니다.
+     * 2.UserService의 getMyInfo 메서드를 호출하여 현재 로그인 된 사용자의 정보를 가져옵니다.
+     * 3.조회된 정보를 클라이언트에게 응답합니다.
+     */
+    @Operation(summary = "내 정보 조회", description = "현재 로그인 된 사용자의 정보를 조회합니다.")
+    @GetMapping("/me")
+    fun getMyInfo(): ResponseEntity<MyInfoResponse> {
+        val myInfo = userService.getMyInfo()
+
+        return ResponseEntity.ok(myInfo)
     }
 }
