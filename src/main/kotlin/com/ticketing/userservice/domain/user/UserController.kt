@@ -5,11 +5,11 @@ import com.ticketing.userservice.domain.user.dto.LoginRequest
 import com.ticketing.userservice.domain.user.dto.LoginResponse
 import com.ticketing.userservice.domain.user.dto.MyInfoResponse
 import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.tags.Tag
+import jakarta.servlet.http.HttpServletRequest
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
-
-import io.swagger.v3.oas.annotations.tags.Tag
 
 @Tag(name = "사용자 API", description = "사용자 가입, 조회 등 관련 기능을 제공하는 API입니다.")
 @RestController
@@ -20,7 +20,7 @@ class UserController (
     /**
      * 사용자 회원가입 API
      *
-     * 1.클라이언트로부터 회원가입에 필요한 정보(SignUpRequest)를 HTTP Body로 받습니다.
+     * 1.클라이언트로부터 회원가입에 필요한 정보를 HTTP Body로 받습니다.
      * 2.비즈니스 로직 처리를 위해 UserService의 signUp메서드를 호출합니다.
      * 3.처리가 성공적으로 완료되면, HTTP 201 Created 상태 코드와 성공 메시지를 반환합니다.
      */
@@ -44,15 +44,16 @@ class UserController (
      * 사용자 로그인 API
      *
      * 1.클라이언트로부터 로그인 정보(LoginRequest)를 HTTP Body로 받습니다.
-     * 2.UserService의 login 메서드를 호출하여 JWT 토큰을 발급받습니다.
-     * 3.발급받은 토큰을 LoginResponse DTO에 담아 클라이언트에게 응답합니다.
+     * 2.UserService의 login 메서드를 호출하여 Access/Refresh토큰이 담긴 LoginResponse를 받습니다.
+     * 3.받은 LoginResponse를 그대로 클라이언트에게 응답합니다.
      */
     @Operation(summary = "사용자 로그인")
     @PostMapping("/login")
     fun login(@RequestBody request: LoginRequest): ResponseEntity<LoginResponse> {
-        val token = userService.login(request)
+        //LoginResponse객체를 반환합니다.
+        val loginResponse = userService.login(request)
 
-        return ResponseEntity.ok(LoginResponse(token))
+        return ResponseEntity.ok(loginResponse)
     }
 
     /**
@@ -68,5 +69,22 @@ class UserController (
         val myInfo = userService.getMyInfo()
 
         return ResponseEntity.ok(myInfo)
+    }
+
+    /**
+     * 사용자 로그아웃 API
+     *
+     * 1.요청 헤더의 'Authorization'에서 'Bearer '를 제외한 순수 토큰을 추출합니다.
+     * 2.UserService의 logout메서드를 호출하여 해당 토큰을 Redis에 등록(Denylist)하고, Refresh Token을 삭제합니다.
+     * 3.성공 메시지를 응답합니다.
+     */
+    @Operation(summary = "사용자 로그아웃", description = "현재 로그인 된 사용자를 로그아웃 처리합니다.(인증 필요)")
+    @PostMapping("/logout")
+    fun logout(request: HttpServletRequest): ResponseEntity<String> {
+        //"Bearer "를 제거하기 위해 7번째 문자부터 자릅니다.
+        val accessToken = request.getHeader("Authorization").substring(7)
+        userService.logout(accessToken)
+
+        return ResponseEntity.ok("성공적으로 로그아웃되었습니다.")
     }
 }

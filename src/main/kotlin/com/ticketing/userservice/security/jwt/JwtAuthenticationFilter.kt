@@ -3,6 +3,7 @@ package com.ticketing.userservice.security.jwt
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
+import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Component
 import org.springframework.web.filter.OncePerRequestFilter
@@ -13,7 +14,8 @@ import org.springframework.web.filter.OncePerRequestFilter
  */
 @Component
 class JwtAuthenticationFilter(
-    private val jwtTokenProvider: JwtTokenProvider
+    private val jwtTokenProvider: JwtTokenProvider,
+    private val redisTemplate: RedisTemplate<String, String>
 ) : OncePerRequestFilter() { //OncePerRequestFilter: 모든 서블릿 요청에 대해 한번만 실행되도록 보장
 
     /**
@@ -22,9 +24,10 @@ class JwtAuthenticationFilter(
      * 1.클라이언트 요청의 HTTP 헤더에서 'Authorization' 헤더를 찾습니다.
      * 2.헤더에 'Bearer '로 시작하는 토큰이 있다면, 'Bearer '부분을 잘라내고 순수 토큰만 추출합니다.
      * 3.추출된 토큰이 유효한지 jwtTokenProvider를 통해 검증합니다.
-     * 4.토큰이 유효하다면, 토큰에서 인증 정보(Authentication)를 가져와 SecurityContextHolder에 설정합니다.
+     * 4.토큰이 유효하다면, Redis에 로그아웃된 토큰(Denylist)으로 등록되어있는지 확인합니다.
+     * 5.로그아웃된 토큰이 아니라면 토큰에서 인증 정보(Authentication)를 가져와 SecurityContextHolder에 설정합니다.
      * -SecurityContextHolder에 인증정보가 설정되면, 해당 요청을 처리하는 동안 사용자는 '인증된' 상태가 됩니다.
-     * 5.다음 필터로 요청을 전달합니다.
+     * 6.다음 필터로 요청을 전달합니다.
      */
     override fun doFilterInternal(
         request: HttpServletRequest,
@@ -34,13 +37,17 @@ class JwtAuthenticationFilter(
         //1~2 헤더에서 토큰 추출
         val token = resolveToken(request)
 
-        //3~4 토큰 유효성 검증 및 인증 정보 설정
+        //3~4 토큰 유효성 검증 및 Denylist 확인
         if(token != null && jwtTokenProvider.validateToken(token)) {
-            val authentication = jwtTokenProvider.getAuthentication(token)
-            SecurityContextHolder.getContext().authentication = authentication
+            val isLoggedOut = redisTemplate.opsForValue().get(token)
+
+            if(isLoggedOut == null) { //Denylist에 없으면, 정상적인 토큰임
+                val authentication = jwtTokenProvider.getAuthentication(token)
+                SecurityContextHolder.getContext().authentication = authentication
+            }
         }
 
-        //5 다음 필터로 전달
+        //6 다음 필터로 전달
         filterChain.doFilter(request, response)
     }
 

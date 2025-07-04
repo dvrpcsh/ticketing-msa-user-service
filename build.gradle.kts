@@ -46,7 +46,9 @@ dependencies {
 	// JWT를 JSON으로 변환하거나 그 반대의 작업을 위해 Jackson 라이브러리와의 통합을 지원합니다.
 	runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.11.5")
 
-
+	// Spring 애플리케이션에서 Redis를 쉽게 사용할 수 있도록 도와주는 라이브러리입니다.
+	implementation("org.springframework.boot:spring-boot-starter-data-redis")
+	
 	// 테스트용 기본 의존성
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
 	testImplementation("org.springframework.security:spring-security-test")

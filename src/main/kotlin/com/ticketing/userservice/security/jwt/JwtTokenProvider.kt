@@ -13,14 +13,14 @@ import java.util.*
 import javax.crypto.SecretKey
 
 /**
- * JWT를 생성하고, 유효성을 검증하며, 토큰에서 정보를 추출하는 핵심 클래스
+ * Access Token과 Refresh Token을 생성하고, 유효성을 검증하며, 토큰에서 정보를 추출하는 핵심 클래스
  */
 @Component
 class JwtTokenProvider (
     // application.properties에 설정한 비밀키와 만료시간을 주입받음
     @Value("\${jwt.secret}") private val secret: String,
-    @Value("\${jwt.expiration-time}") private val expirationTime: Long
-
+    @Value("\${jwt.access-token-expiration-time}") private val accessTokenExpirationTime: Long,
+    @Value("\${jwt.refresh-token-expiration-time}") private val refreshTokenExpirationTime: Long
 ) {
     // 주입받은 비밀키를 HMAC-SHA 알고리즘에 사용할 수 있는 SecretKey 객체로 변환
     private val key: SecretKey by lazy {
@@ -28,22 +28,36 @@ class JwtTokenProvider (
     }
 
     /**
-     * 사용자의 이메일과 Role을 기반으로 Jwt Token을 생성합니다.
+     * 사용자의 이메일과 Role을 기반으로 Jwt Token(Access + Refresh)을 생성합니다.
      *
-     * 1.Claims(토큰에 담을 정보)를 설정합니다. 여기서는 사용자 역할(Role)을 담슴니다.
-     * 2.현재 시간과 만료 시간을 설정합니다.
-     * 3.최종적으로 토큰을 빌드하고, 비밀 키로 서명하여 문자열 형태로 반환합니다.
      */
-    fun generateToken(email: String, role: UserRole): String {
-        val claims = Jwts.claims().apply {
-            this["role"] = role.name
-        }
-        val now = Date()
-        val validity = Date(now.time + expirationTime)
+    fun generateToken(email: String, role: UserRole): TokenPair {
+        val accessToken = generateAccessToken(email, role)
+        val refreshToken = generateRefreshToken(email)
 
+        return TokenPair(accessToken, refreshToken)
+    }
+
+    //Access Token 생성
+    private fun generateAccessToken(email: String, role: UserRole): String {
+        val claims = Jwts.claims().apply { this["role"] = role.name }
+
+        return doGenerateToken(claims, email, accessTokenExpirationTime)
+    }
+
+    //Refresh Token 생성
+    private fun generateRefreshToken(email: String): String {
+
+        return doGenerateToken(Jwts.claims(), email, refreshTokenExpirationTime)
+    }
+
+    //토큰생성로직
+    private fun doGenerateToken(claims: Claims, subject: String, expireTime: Long): String {
+        val now = Date()
+        val validity = Date(now.time + expireTime)
         return Jwts.builder()
             .setClaims(claims)
-            .setSubject(email) //토큰의 주체(subject)로 사용자의 이메일을 사용합니다.
+            .setSubject(subject)
             .setIssuedAt(now)
             .setExpiration(validity)
             .signWith(key, SignatureAlgorithm.HS256)
@@ -53,33 +67,22 @@ class JwtTokenProvider (
     /**
      * 주어진 JWT 토큰에서 인증(Authentication) 정보를 추출합니다.
      *
-     * 1.토큰을 파싱하여 Claims를 추출합니다.
-     * 2.Claims에서 사용자 이메일(subject)과 역할(Role) 정보를 가져옵니다.
-     * 3.Spring Security가 이해할 수 있는 Authentication 객체(UsernamePasswordAuthenticationToken)을 생성하여 반환합니다.
      */
     fun getAuthentication(token: String): Authentication {
-        val claims = Jwts.parserBuilder()
-            .setSigningKey(key)
-            .build()
-            .parseClaimsJws(token)
-            .body
-
-        val email = claims.subject
-        val role = claims["role"] as String
+        val claims = parseClaims(token)
+        val role = claims["role"] as String? ?: throw RuntimeException("토큰에 역할정보가 없습니다.")
         val authorities = listOf(SimpleGrantedAuthority(role))
 
-        return UsernamePasswordAuthenticationToken(email, "", authorities)
+        return UsernamePasswordAuthenticationToken(claims.subject, "", authorities)
     }
 
     /**
      * 주어진 JWT 토큰의 유효성을 검증합니다.
      *
-     * 1.토큰을 파싱해보고, 각종 예외(서명 불일치, 만료, 형식 오류 등)가 발생하면 false를 반환
-     * 2.예외 없이 성공적으로 파싱되면 토큰이 유효한 것이므로 true를 반환
      */
     fun validateToken(token: String): Boolean {
         try {
-            Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token)
+            parseClaims(token)
 
             return true
         } catch(e: SecurityException) {
@@ -95,4 +98,30 @@ class JwtTokenProvider (
         }
         return false
     }
+
+    /**
+     * 토큰의 남은 유효 시간을 계산하여 밀리초 단위로 반환합니다.
+     */
+    fun getRemainingTime(token: String): Long {
+        val expiration = parseClaims(token).expiration
+
+        return expiration.time - Date().time
+    }
+
+    /**
+     * 토큰 파싱을 위한 공통 메서드
+     */
+    private fun parseClaims(token: String): Claims {
+        return Jwts.parserBuilder()
+            .setSigningKey(key)
+            .build()
+            .parseClaimsJws(token)
+            .body
+    }
 }
+
+//생성된 토큰을 담을 데이터 클래스
+data class TokenPair(
+    val accessToken: String,
+    val refreshToken: String
+)
