@@ -1,18 +1,13 @@
 package com.ticketing.userservice.domain.user
 
-import com.ticketing.userservice.domain.user.dto.LoginRequest
-import com.ticketing.userservice.domain.user.dto.LoginResponse
-import com.ticketing.userservice.domain.user.dto.SignUpRequest
-import com.ticketing.userservice.domain.user.dto.MyInfoResponse
+import com.ticketing.userservice.domain.user.dto.*
 import com.ticketing.userservice.security.jwt.JwtTokenProvider
-import com.ticketing.userservice.security.jwt.TokenPair
+import jakarta.persistence.EntityNotFoundException
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import jakarta.persistence.EntityNotFoundException
 import org.springframework.security.core.context.SecurityContextHolder
-import java.util.concurrent.TimeUnit
 import java.time.Duration
 
 @Service
@@ -23,13 +18,17 @@ class UserService (
     private val jwtTokenProvider: JwtTokenProvider,
     private val redisTemplate: RedisTemplate<String, String>
 ) {
-    //모든 트랜잭션을 하나로 묶어 중간에 실패하면 모두 Rollback되게 함
+    /**
+     * 신규 사용자 회원가입
+     *
+     * 1.요청된 이메일이 이미 존재하는지 확인합니다.
+     * 2.비밀번호와 비밀번호 확인 값이 일치하는지 검사합니다.
+     * 3.비밀번호를 암호화하여 새로운 User 엔티티를 생성하고 데이터베이스에 저장합니다.
+     */
     @Transactional
     fun signUp(request: SignUpRequest) {
-        //이메일 중복 확인
-        //사용자가 요청한 이메일로 이미 가입한 회원이 있는지 DB에서 찾아봄
+
         if(userRepository.findByEmail(request.email) != null) {
-            //이미 존재한다면, 예외처리 후 가입 중단
             throw IllegalArgumentException("이미 사용중인 이메일입니다.");
         }
 
@@ -54,7 +53,7 @@ class UserService (
     /**
      * 사용자 로그인
      *
-     * 1.이메일로 사용자를 조회합니다.(없으면 예외발생)
+     * 1.이메일로 사용자를 조회하고 비밀번호가 일치하는지 확인합니다.
      * 2.인증 성공 시, Access Token과 Refresh Token을 모두 생성합니다.
      * 3.생성된 Refresh Token은 Redis에 저장하여 관리합니다. (Key: "RT:{email}", Value: refreshToken)
      * 4.두 토큰을 모두 클라이언트에게 반환합니다.
@@ -69,7 +68,7 @@ class UserService (
             throw IllegalArgumentException("이메일 또는 비밀번호가 일치하지 않습니다.")
         }
 
-        val tokenPair = jwtTokenProvider.generateToken(user.email, user.role)
+        val tokenPair = jwtTokenProvider.generateTokenPair(user.email, user.role)
 
         //Refresh Token을 Redis에 저장(유효기간과 동일하게 설정)
         redisTemplate.opsForValue().set(
@@ -85,13 +84,10 @@ class UserService (
      * 현재 인증된 사용자의 정보를 조회합니다.
      *
      * 1.SecurityContextHolder에서 현재 사용자의 인증 정보(Authentication)를 가져옵니다.
-     * - 이 정보는 이전에 만든 JwtAuthenticationFilter가 토큰을 검증하고 넣어준 것 입니다.
-     * 2.인증 정보에서 사용자의 이메일(name)을 추출합니다.
-     * 3.이메일을 사용하여 DB에서 사용자 정보를 조회하고, MyInfoResponse DTO로 변환하여 반환합니다.
+     * 2.이메일을 사용하여 데이터베이스에서 사용자 정보를 조회하고 DTO로 변환하여 반환합니다.
      */
     fun getMyInfo(): MyInfoResponse {
         val email = SecurityContextHolder.getContext().authentication.name
-
         val user = userRepository.findByEmail(email)
             ?: throw EntityNotFoundException("사용자를 찾을 수 없습니다.")
 
@@ -113,8 +109,9 @@ class UserService (
         val email = authentication.name
 
         //1.Redis에서 해당 사용자의 Refresh Token 삭제
-        if(redisTemplate.opsForValue().get("RT: $email") != null) {
-            redisTemplate.delete("RT: $email")
+        val refreshTokenKey = "RT:$email"
+        if (redisTemplate.hasKey(refreshTokenKey)) {
+            redisTemplate.delete(refreshTokenKey)
         }
 
         //2.Access Token을 Denylist에 등록
@@ -122,5 +119,38 @@ class UserService (
         if(remainingTime > 0) {
             redisTemplate.opsForValue().set(accessToken, "logout", Duration.ofMillis(remainingTime))
         }
+    }
+
+    /**
+     * Refresh Token을 사용하여 새로운 Access Token을 재발급합니다.
+     *
+     * 1.전달받은 Refresh Token의 유효성을 검증합니다.
+     * 2.토큰에서 사용자의 이메일 정보를 추출합니다.
+     * 3.Redis에 저장된 Refresh Token과 전달받은 토큰이 일치하는지 확인하여 탈취여부를 검증합니다.
+     * 4.모든 검증을 통과하면 새로운 Access Token을 생성하여 반환합니다.
+     */
+    fun reissueToken(request: TokenReissueRequest): TokenReissueResponse {
+        val refreshToken = request.refreshToken
+
+        //1.Refresh Token 유효성 검증
+        if(!jwtTokenProvider.validateToken(refreshToken)) {
+            throw IllegalArgumentException("유효하지 않은 Refresh Token입니다.")
+        }
+
+        //2.토큰에서 사용자 정보 추출
+        val email = jwtTokenProvider.getSubject(refreshToken)
+
+        //3.Redis에 저장된 토큰과 일치하는지 확인
+        val savedRefreshToken = redisTemplate.opsForValue().get("RT:$email")
+        if(savedRefreshToken != refreshToken) {
+            throw IllegalArgumentException("Refresh Token 정보가 일치하지 않습니다.")
+        }
+
+        //4.새로운 Access Token 생성
+        val user = userRepository.findByEmail(email)
+            ?: throw EntityNotFoundException("사용자를 찾을 수 없습니다.")
+        val newAccessToken = jwtTokenProvider.generateAccessToken(user.email, user.role)
+
+        return TokenReissueResponse(newAccessToken)
     }
 }

@@ -1,9 +1,6 @@
 package com.ticketing.userservice.domain.user
 
-import com.ticketing.userservice.domain.user.dto.SignUpRequest
-import com.ticketing.userservice.domain.user.dto.LoginRequest
-import com.ticketing.userservice.domain.user.dto.LoginResponse
-import com.ticketing.userservice.domain.user.dto.MyInfoResponse
+import com.ticketing.userservice.domain.user.dto.*
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
 import jakarta.servlet.http.HttpServletRequest
@@ -86,5 +83,20 @@ class UserController (
         userService.logout(accessToken)
 
         return ResponseEntity.ok("성공적으로 로그아웃되었습니다.")
+    }
+
+    /**
+     * Access Token 재발급 API
+     *
+     * 1.클라이언트로부터 Refresh Token을 HTTP Body로 받습니다.
+     * 2.UserService의 reissueToken 메서드를 호출하여 새로운 Access Token을 발급받습니다.
+     * 3.발급받은 토큰을 클라이언트에게 응답합니다.
+     */
+    @Operation(summary = "Access Token 재발급")
+    @PostMapping("/reissue")
+    fun reissueToken(@RequestBody request: TokenReissueRequest): ResponseEntity<TokenReissueResponse> {
+        val response = userService.reissueToken(request)
+
+        return ResponseEntity.ok(response)
     }
 }
