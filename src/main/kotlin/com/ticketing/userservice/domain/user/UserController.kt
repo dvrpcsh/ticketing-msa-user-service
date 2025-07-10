@@ -56,13 +56,11 @@ class UserController (
     /**
      * 내 정보 조회 API
      *
-     * 1.이 API는 인증이 필요하며, 요청 헤더에 유효한 JWT토큰이 포함되어야 합니다.
-     * 2.UserService의 getMyInfo 메서드를 호출하여 현재 로그인 된 사용자의 정보를 가져옵니다.
-     * 3.조회된 정보를 클라이언트에게 응답합니다.
+     * API 게이트웨이가 검증 후 헤더에 담아준 사용자 이메일을 받습니다.
      */
     @Operation(summary = "내 정보 조회", description = "현재 로그인 된 사용자의 정보를 조회합니다.")
     @GetMapping("/me")
-    fun getMyInfo(): ResponseEntity<MyInfoResponse> {
+    fun getMyInfo(@RequestHeader("X-User-Email") email: String): ResponseEntity<MyInfoResponse> {
         val myInfo = userService.getMyInfo()
 
         return ResponseEntity.ok(myInfo)
@@ -71,16 +69,18 @@ class UserController (
     /**
      * 사용자 로그아웃 API
      *
-     * 1.요청 헤더의 'Authorization'에서 'Bearer '를 제외한 순수 토큰을 추출합니다.
-     * 2.UserService의 logout메서드를 호출하여 해당 토큰을 Redis에 등록(Denylist)하고, Refresh Token을 삭제합니다.
-     * 3.성공 메시지를 응답합니다.
+     * 게이트웨이가 검증 후 헤더에 담아준 Access Token과 사용자 이메일을 받습니다.
      */
     @Operation(summary = "사용자 로그아웃", description = "현재 로그인 된 사용자를 로그아웃 처리합니다.(인증 필요)")
     @PostMapping("/logout")
-    fun logout(request: HttpServletRequest): ResponseEntity<String> {
+    fun logout(
+        @RequestHeader("Authorization") authorizationHeader: String,
+        @RequestHeader("X-User-Email") email: String
+    ): ResponseEntity<String> {
+
         //"Bearer "를 제거하기 위해 7번째 문자부터 자릅니다.
-        val accessToken = request.getHeader("Authorization").substring(7)
-        userService.logout(accessToken)
+        val accessToken = authorizationHeader.substring(7)
+        userService.logout(accessToken, email)
 
         return ResponseEntity.ok("성공적으로 로그아웃되었습니다.")
     }

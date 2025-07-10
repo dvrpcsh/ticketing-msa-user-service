@@ -83,11 +83,9 @@ class UserService (
     /**
      * 현재 인증된 사용자의 정보를 조회합니다.
      *
-     * 1.SecurityContextHolder에서 현재 사용자의 인증 정보(Authentication)를 가져옵니다.
-     * 2.이메일을 사용하여 데이터베이스에서 사용자 정보를 조회하고 DTO로 변환하여 반환합니다.
+     * 컨트롤러로부터 전달받은 이메일을 사용하여 DB에서 사용자 정보를 조회합니다.
      */
-    fun getMyInfo(): MyInfoResponse {
-        val email = SecurityContextHolder.getContext().authentication.name
+    fun getMyInfo(email: String): MyInfoResponse {
         val user = userRepository.findByEmail(email)
             ?: throw EntityNotFoundException("사용자를 찾을 수 없습니다.")
 
@@ -97,13 +95,15 @@ class UserService (
     /**
      * 사용자 로그아웃
      *
-     * 1.전달받은 Access Token을 Redis의 Denylist에 등록하여 무효화합니다.(남은 유효기간만큼만 저장)
-     * 2.Redis에 저장되어 있던 사용자의 Refresh Token을 삭제하여 재발급을 막습니다.
+     * 컨트롤러로부터 Access Token과 이메일을 모두 전달받아 처리합니다.
      */
-    fun logout(accessToken: String) {
+    fun logout(accessToken: String, email: String) {
+
+        /* 유효성 검증은 게이트웨이에서 진행
         if(!jwtTokenProvider.validateToken(accessToken)) {
             throw IllegalArgumentException("유효하지 않은 토큰입니다.")
         }
+        */
 
         val authentication = jwtTokenProvider.getAuthentication(accessToken)
         val email = authentication.name
