@@ -3,7 +3,6 @@ package com.ticketing.userservice.domain.user
 import com.ticketing.userservice.domain.user.dto.*
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
-import jakarta.servlet.http.HttpServletRequest
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
@@ -61,7 +60,7 @@ class UserController (
     @Operation(summary = "내 정보 조회", description = "현재 로그인 된 사용자의 정보를 조회합니다.")
     @GetMapping("/me")
     fun getMyInfo(@RequestHeader("X-User-Email") email: String): ResponseEntity<MyInfoResponse> {
-        val myInfo = userService.getMyInfo()
+        val myInfo = userService.getMyInfo(email)
 
         return ResponseEntity.ok(myInfo)
     }

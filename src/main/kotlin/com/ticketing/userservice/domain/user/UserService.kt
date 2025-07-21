@@ -7,7 +7,6 @@ import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import org.springframework.security.core.context.SecurityContextHolder
 import java.time.Duration
 
 @Service
@@ -103,10 +102,10 @@ class UserService (
         if(!jwtTokenProvider.validateToken(accessToken)) {
             throw IllegalArgumentException("유효하지 않은 토큰입니다.")
         }
-        */
 
         val authentication = jwtTokenProvider.getAuthentication(accessToken)
         val email = authentication.name
+        */
 
         //1.Redis에서 해당 사용자의 Refresh Token 삭제
         val refreshTokenKey = "RT:$email"
