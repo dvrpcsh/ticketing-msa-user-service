@@ -67,7 +67,7 @@ class UserService (
             throw IllegalArgumentException("이메일 또는 비밀번호가 일치하지 않습니다.")
         }
 
-        val tokenPair = jwtTokenProvider.generateTokenPair(user.email, user.role)
+        val tokenPair = jwtTokenProvider.generateTokenPair(user.email, user.role, user.id!!)
 
         //Refresh Token을 Redis에 저장(유효기간과 동일하게 설정)
         redisTemplate.opsForValue().set(
@@ -148,7 +148,7 @@ class UserService (
         //4.새로운 Access Token 생성
         val user = userRepository.findByEmail(email)
             ?: throw EntityNotFoundException("사용자를 찾을 수 없습니다.")
-        val newAccessToken = jwtTokenProvider.generateAccessToken(user.email, user.role)
+        val newAccessToken = jwtTokenProvider.generateAccessToken(user.email, user.role, user.id!!)
 
         return TokenReissueResponse(newAccessToken)
     }

@@ -29,16 +29,19 @@ class JwtTokenProvider (
     /**
      * 로그인 성공 시 Jwt Token(Access + Refresh)을 생성합니다.
      */
-    fun generateTokenPair(email: String, role: UserRole): TokenPair {
-        val accessToken = generateAccessToken(email, role)
+    fun generateTokenPair(email: String, role: UserRole, userId: Long): TokenPair {
+        val accessToken = generateAccessToken(email, role, userId)
         val refreshToken = generateRefreshToken(email)
 
         return TokenPair(accessToken, refreshToken)
     }
 
     //Access Token 생성
-    fun generateAccessToken(email: String, role: UserRole): String {
-        val claims = Jwts.claims().apply { this["role"] = role.name }
+    fun generateAccessToken(email: String, role: UserRole, userId: Long): String {
+        val claims = Jwts.claims().apply {
+            this["role"] = role.name
+            this["userId"] = userId
+        }
 
         return doGenerateToken(claims, email, accessTokenExpirationTime)
     }

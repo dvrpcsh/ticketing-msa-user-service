@@ -3,6 +3,7 @@ package com.ticketing.userservice.domain.user
 import com.ticketing.userservice.domain.user.dto.*
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
+import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.*
 class UserController (
     private val userService: UserService
 ) {
+    private val logger = LoggerFactory.getLogger(this::class.java)
     /**
      * 사용자 회원가입 API
      *
@@ -61,9 +63,9 @@ class UserController (
     @GetMapping("/me")
     fun getMyInfo(@RequestHeader("X-User-Email") email: String): ResponseEntity<MyInfoResponse> {
         val myInfo = userService.getMyInfo(email)
-
         return ResponseEntity.ok(myInfo)
     }
+
 
     /**
      * 사용자 로그아웃 API
